@@ -1,23 +1,3 @@
-"""
-Request/response schemas for the generation endpoint.
-
-Why this file exists:
-FastAPI uses Pydantic models to validate incoming requests and to define/document
-the shape of responses (this is also what powers the auto-generated /docs page).
-
-We keep schemas in their own module, separate from route handlers, because:
-  - The same schema often gets reused across multiple routes (e.g. generate + retrieve).
-  - It keeps route files focused on HTTP concerns (status codes, routing) rather than
-    data-shape concerns.
-  - In Phase 1, this is where the full architecture output schema (services, DBs,
-    endpoints, roadmap, etc.) will live and grow. Starting it now, even as a stub,
-    means the shape is already isolated in the right place.
-
-For this task, we only define the MINIMUM needed for a placeholder endpoint:
-what a request looks like, and a trivial acknowledgment response. No AI-shaped
-fields yet - those arrive in Phase 1 once the Gemini schema is actually designed.
-"""
-
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +10,114 @@ class GenerationRequest(BaseModel):
     )
 
 
+# ----------------------------
+# Microservices
+# ----------------------------
+
+class Microservice(BaseModel):
+    name: str = Field(..., description="Service name")
+    responsibility: str = Field(..., description="Purpose of the service")
+    language: str = Field(..., description="Programming language")
+    framework: str = Field(..., description="Framework used")
+    api_gateway: bool = Field(
+        default=False,
+        description="True if this service acts as the API Gateway"
+    )
+
+
+# ----------------------------
+# Databases
+# ----------------------------
+
+class DatabaseRecommendation(BaseModel):
+    service: str
+    database_type: str
+    justification: str
+
+
+# ----------------------------
+# Service Communication
+# ----------------------------
+
+class CommunicationLink(BaseModel):
+    from_service: str
+    to_service: str
+    pattern: str = Field(..., description="REST or event-driven")
+    broker: str | None = Field(
+        default=None,
+        description="Kafka, RabbitMQ, etc. Only for event-driven communication."
+    )
+    justification: str
+
+
+# ----------------------------
+# REST APIs
+# ----------------------------
+
+class APIEndpoint(BaseModel):
+    method: str
+    path: str
+    description: str
+
+
+class ServiceAPIs(BaseModel):
+    service: str
+    endpoints: list[APIEndpoint]
+
+
+# ----------------------------
+# Technology Stack
+# ----------------------------
+
+class TechnologyStack(BaseModel):
+    frontend: str
+    backend: str
+    database: str
+    message_broker: str | None = None
+    api_gateway: str
+    deployment: str
+
+
+# ----------------------------
+# Architecture Quality
+# ----------------------------
+
+class ArchitectureScore(BaseModel):
+    scalability: int = Field(..., ge=1, le=10)
+    security: int = Field(..., ge=1, le=10)
+    maintainability: int = Field(..., ge=1, le=10)
+    cost_efficiency: int = Field(..., ge=1, le=10)
+
+
+# ----------------------------
+# Complete Architecture
+# ----------------------------
+
+class ArchitectureData(BaseModel):
+    project_name: str
+    description: str
+
+    microservices: list[Microservice]
+
+    databases: list[DatabaseRecommendation]
+
+    communication: list[CommunicationLink]
+
+    apis: list[ServiceAPIs]
+
+    technology_stack: TechnologyStack
+
+    deployment_notes: list[str]
+
+    architecture_score: ArchitectureScore
+
+
+# ----------------------------
+# API Response
+# ----------------------------
+
 class GenerationResponse(BaseModel):
     idea: str
     status: str
     message: str
+    architecture: ArchitectureData | None = None
